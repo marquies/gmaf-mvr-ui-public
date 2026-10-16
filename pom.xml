@@ -310,6 +310,27 @@
                                         <exclude>META-INF/*.RSA</exclude>
                                     </excludes>
                                 </filter>
+                                <!--
+                                  neo4j-jdbc-driver is an uber-jar that bundles jackson
+                                  2.10.3 under the original com.fasterxml.jackson.*
+                                  package names. Shading merged its LRUMap (which predates
+                                  the LookupCache interface) over the 2.18.2 one, so every
+                                  JSON response died with:
+                                    IncompatibleClassChangeError: LRUMap does not implement
+                                    the requested interface LookupCache
+                                  A Maven exclusion cannot fix this - the classes are inside
+                                  the artifact, not transitive dependencies - so drop them
+                                  here and let the real jackson-databind supply them.
+                                -->
+                                <filter>
+                                    <artifact>org.neo4j:neo4j-jdbc-driver</artifact>
+                                    <excludes>
+                                        <exclude>com/fasterxml/jackson/**</exclude>
+                                        <!-- its copy of the metadata too, which otherwise
+                                             leaves the jar claiming jackson 2.10.3 -->
+                                        <exclude>META-INF/maven/com.fasterxml.jackson.core/**</exclude>
+                                    </excludes>
+                                </filter>
                             </filters>
                             <shadedArtifactAttached>true</shadedArtifactAttached>
                             <shadedClassifierName>executable</shadedClassifierName>
