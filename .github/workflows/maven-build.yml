@@ -11,6 +11,7 @@ on:
 
 permissions:
     contents: read
+    packages: read
     checks: write
     id-token: write
 
@@ -30,8 +31,10 @@ jobs:
     - name: Build with Maven
       run: mvn -B  --no-transfer-progress clean package -s $GITHUB_WORKSPACE/.github/workflows/maven-settings.xml -P github --file pom.xml
       env:
-        USER_NAME: ${{ secrets.USER_NAME }}
-        ACCESS_TOKEN: ${{ secrets.ACCESS_TOKEN }}
+        # Falls back to the workflow token when the secrets are not set (the -public
+        # repos and forks): the packages are public, so it can read them.
+        USER_NAME: ${{ secrets.USER_NAME || github.actor }}
+        ACCESS_TOKEN: ${{ secrets.ACCESS_TOKEN || github.token }}
     - name: JUnit Report Action
       uses: mikepenz/action-junit-report@v3.7.6
       with:
@@ -40,6 +43,9 @@ jobs:
 
   publish-snapshot:
     needs: build
+    # The -public twins share their groupId:artifactId with the private repos, which
+    # publish them; a second publisher would only collide (versions are immutable).
+    if: ${{ !endsWith(github.repository, '-public') }}
     runs-on: ubuntu-latest
     permissions:
       contents: read
